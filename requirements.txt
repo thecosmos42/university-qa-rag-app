@@ -1,0 +1,10 @@
+PyPDF2
+sentence-transformers
+chromadb
+transformers
+pymupdf
+langchain-community
+langchain-text-splitters
+accelerate
+# torch
+# pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128
