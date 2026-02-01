@@ -19,6 +19,33 @@ from src.rag.retriever import Retriever
 from src.rag.prompt_builder import PromptBuilder
 from src.llm.llm import LLM
 
+def _format_sources(retrieved_chunks: list[dict]) -> str:
+    """
+    Build a human-readable source citation block from retrieved chunks.
+
+    Deduplicates by (source, page) so the same page isn't listed twice
+    even if multiple chunks came from it.
+
+    Args:
+        retrieved_chunks: The chunks that were fed into the prompt.
+
+    Returns:
+        A multi-line string like:
+            📄 Sources:
+               → report.pdf, page 3
+               → report.pdf, page 7
+    """
+    seen: set[tuple[str, int]] = set()
+    lines: list[str] = []
+
+    for chunk in retrieved_chunks:
+        key = (chunk.get("source", "unknown"), chunk.get("page", 0))
+        if key not in seen:
+            seen.add(key)
+            lines.append(f"   → {key[0]}, page {key[1] + 1}")  # 1-indexed for humans
+
+    return "📄 Sources:\n" + "\n".join(lines)
+
 
 def run_query_loop() -> None:
     """Start the interactive question-answering loop."""
@@ -69,7 +96,9 @@ def run_query_loop() -> None:
         # Step 3 — Generate the answer
         answer = llm.generate(prompt)
 
-        print(f"\nAssistant: {answer}\n")
+        # Step 4 — Print answer + source citations
+        print(f"\nAssistant: {answer}")
+        print(f"\n{_format_sources(retrieved_chunks)}\n")
 
 
 if __name__ == "__main__":

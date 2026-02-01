@@ -85,7 +85,11 @@ class VectorStore:
         texts = [chunk["text"] for chunk in chunks]
 
         metadata = [
-            {"source": chunk["source"], "chunk_index": chunk["chunk_index"]}
+            {
+                "source": chunk["source"],
+                "page": chunk.get("page", 0),
+                "chunk_index": chunk["chunk_index"],
+            }
             for chunk in chunks
         ]
 

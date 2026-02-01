@@ -71,6 +71,7 @@ class LLM:
                 max_new_tokens=LLM_MAX_NEW_TOKENS,
                 temperature=LLM_TEMPERATURE,
                 do_sample=LLM_TEMPERATURE > 0,  # greedy when temp == 0
+                repetition_penalty=1.3,          # discourages looping back
                 pad_token_id=self.tokenizer.eos_token_id,
             )
 

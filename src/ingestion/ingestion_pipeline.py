@@ -53,6 +53,7 @@ def _documents_to_dicts(chunks) -> List[dict]:
         result.append({
             "text": doc.page_content,
             "source": source_name,
+            "page": doc.metadata.get("page", 0),
             "chunk_index": doc.metadata.get("chunk_index", 0),
         })
     return result
