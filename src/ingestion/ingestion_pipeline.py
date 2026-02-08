@@ -19,6 +19,9 @@ from src.ingestion.chunker import TextChunker
 from src.ingestion.embedder import Embedder
 from src.db.supabase_db import Supabase
 from src.config.db_config import SUPABASE_URL, SUPABASE_SERVICE_KEY
+from src.config.config import PDF_INPUT_DIR
+import os
+import hashlib
 
 
 def _documents_to_dicts(chunks) -> List[dict]:
@@ -59,10 +62,6 @@ def _documents_to_dicts(chunks) -> List[dict]:
         print(f"--- After translating Langchain to dict {i} ---")
         print(f"Content Preview: {chunk}")
     return result
-
-from src.config.config import PDF_INPUT_DIR
-import os
-import hashlib
 
 def calculate_checksum(file_path: str) -> str:
     """Helper to hash the file content."""

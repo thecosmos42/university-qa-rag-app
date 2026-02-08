@@ -1,18 +1,39 @@
-from fastapi import APIRouter
+from fastapi import FastAPI
 from pydantic import BaseModel
-from src.db.supabase import supabase
+import supabase
+from src.config.db_config import SUPABASE_URL, SUPABASE_SERVICE_KEY
+from src.ingestion.embedder import Embedder
 
-router = APIRouter()
+app = FastAPI()
 
-# defines structure of incoming class adn validates it before executing business logic
+# Initialize Supabase client
+sb = supabase.create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
+
 class QueryRequest(BaseModel):
     question: str
+    document_ids: list[str] = None
+    semantic_weight: float = 0.6
+    keyword_weight: float = 0.4
+    limit: int = 10
 
-@router.post("/query")
-def query(req: QueryRequest):
-    # TEMP sanity check
-    res = supabase.table("documents").select("*").execute()
-    return {
-        "question": req.question,
-        "documents_in_db": len(res.data)
-    }
+@app.post("/query")
+def query_rag(req: QueryRequest):
+    # 1. Embed the question
+    question_embedding = Embedder.encode([req.question])[0]
+
+    # 2. Call hybrid_search SQL function
+    doc_ids = req.document_ids or []
+    results = sb.rpc(
+        "hybrid_search",
+        {
+            "p_question": req.question,
+            "p_question_embedding": question_embedding,
+            "p_document_ids": doc_ids,
+            "p_semantic_weight": req.semantic_weight,
+            "p_keyword_weight": req.keyword_weight,
+            "p_limit": req.limit
+        }
+    ).execute()
+
+    # 3. Return structured response
+    return {"results": results.data}

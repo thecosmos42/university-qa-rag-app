@@ -2,17 +2,11 @@
 """
 Embedding Module
 
-Responsibility: Convert text strings into dense numerical vectors using a
-local sentence-transformers model.
-
-The model is loaded once when the class is instantiated and reused for
-every subsequent encode call, avoiding expensive repeated loading.
+Convert text strings into dense numerical vectors
 """
 
 from typing import List
-
 from sentence_transformers import SentenceTransformer
-
 from src.config.config import EMBEDDING_MODEL_NAME
 
 
@@ -31,10 +25,6 @@ class Embedder:
         self.model = SentenceTransformer(model_name)
         print("[Embedder] Model loaded.")
 
-    # ------------------------------------------------------------------
-    # Public API
-    # ------------------------------------------------------------------
-
     def encode(self, texts: List[str]) -> List[List[float]]:
         """
         Encode a list of text strings into vectors.
@@ -50,7 +40,6 @@ class Embedder:
         if not texts:
             return []
 
-        # show_progress_bar=True is helpful during bulk ingestion;
         # sentence-transformers handles batching internally.
         embeddings = self.model.encode(texts, show_progress_bar=True)
 
