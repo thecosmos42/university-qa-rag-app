@@ -14,7 +14,7 @@ Usage:
 """
 
 from src.ingestion.embedder import Embedder
-from src.vector_store.persist_data import VectorStore
+from src.vector_store.chroma_db_local import VectorStore
 from src.rag.retriever import Retriever
 from src.rag.prompt_builder import PromptBuilder
 from src.llm.llm import LLM

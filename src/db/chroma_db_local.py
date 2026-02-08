@@ -1,13 +1,7 @@
 # rag_system/vector_store.py
 """
-Vector Store Module
-
-Responsibility: Persist and retrieve text chunks using ChromaDB as a local,
+Persist and retrieve text chunks using ChromaDB as a local,
 file-backed vector database.
-
-This module is the only place that knows about ChromaDB.  If you ever want
-to swap in a different vector store (e.g. FAISS, Milvus), you only need to
-rewrite this file — the rest of the pipeline stays the same.
 """
 
 from typing import List

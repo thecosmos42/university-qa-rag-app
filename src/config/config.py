@@ -16,7 +16,7 @@ from pathlib import Path
 PDF_INPUT_DIR: Path = Path("./data/pdfs")
 
 # Root directory where ChromaDB will persist its vector store on disk.
-CHROMA_PERSIST_DIR: Path = Path("./db")
+CHROMA_PERSIST_DIR: Path = Path("./src/db")
 
 
 # ---------------------------------------------------------------------------

@@ -1,10 +1,8 @@
 # rag_system/chunker.py
 
 from typing import List
-
 from langchain_core.documents import Document
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-
 from src.config.config import CHUNK_SIZE, CHUNK_OVERLAP, CHUNK_SEPARATORS
 
 
@@ -38,11 +36,6 @@ class TextChunker:
         """
         Split every Document produced by PDFIngester into smaller chunks.
 
-        The splitter preserves and propagates each input Document's metadata
-        (source path, page number, etc.) into every chunk it produces.  A
-        "chunk_index" key is added so downstream code can reconstruct ordering
-        if needed.
-
         Args:
             documents: List of LangChain Document objects as returned by
                        PDFIngester.ingest_all().
@@ -55,12 +48,20 @@ class TextChunker:
         chunks: List[Document] = self.splitter.split_documents(documents)
 
         # Assign a chunk_index per source file for deterministic IDs
+        # helps LLM get more contexet while fetching 
         source_counters: dict[str, int] = {}
         for chunk in chunks:
-            source = chunk.metadata.get("source", "unknown")
-            index = source_counters.get(source, 0)
-            chunk.metadata["chunk_index"] = index
-            source_counters[source] = index + 1
+                # Identify the origin file
+                source = chunk.metadata.get("source", "unknown")
+                
+                # Retrieve the next available number for this specific file
+                index = source_counters.get(source, 0)
+                
+                # stamp the number onto the chunk
+                chunk.metadata["chunk_index"] = index
+                
+                # Increment the counter for the next chunk of this file
+                source_counters[source] = index + 1
 
         print(
             f"[TextChunker] Produced {len(chunks)} chunks "

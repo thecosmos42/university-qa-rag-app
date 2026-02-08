@@ -1,0 +1,2 @@
+SUPABASE_URL = "https://oohppneumjxpuhsmmets.supabase.co"
+SUPABASE_SERVICE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9vaHBwbmV1bWp4cHVoc21tZXRzIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MDQ4NTEwMiwiZXhwIjoyMDg2MDYxMTAyfQ.3de0kQSnFuGUHdFo5lAjYUEJrgnM8hLruw-UVPu9ybc"
