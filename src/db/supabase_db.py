@@ -5,10 +5,15 @@ from pathlib import Path
 
 
 class Supabase:
+    """
+    A controller class for Supabase operations, specifically designed 
+    for managing RAG (Retrieval-Augmented Generation) document storage.
+    """
     def __init__(self, url: str, key: str):
         self.supabase: Client = create_client(url, key)
     
     def clean_text(self, text: str) -> str:
+        """Removes illegal characters that cause PostgreSQL insert errors."""
         if not text:
             return text
         return text.replace("\x00", "")
@@ -23,6 +28,10 @@ class Supabase:
         chunks: list[dict],
         embeddings: list[list[float]],
     ) -> None:
+        """
+        Performs an atomic-like refresh of a document: 
+        Updates metadata, purges old vectors, and inserts new ones.
+        """
         # Upsert document row
         doc_res = (
             self.supabase
@@ -71,6 +80,9 @@ class Supabase:
 
 
     def needs_update(self, filename: str, checksum: str) -> bool:
+        """
+        Compares local file hash against DB hash to avoid redundant embedding API calls.
+        """
         res = (
             self.supabase
             .table("documents")

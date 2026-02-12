@@ -131,34 +131,5 @@ def run_ingestion() -> None:
     print("--- Ingestion Complete ---")
 
 
-
-# def run_ingestion() -> None:
-#     """Execute the full ingestion pipeline end-to-end."""
-
-#     # Load PDFs as list of LangChain Documents (one per page)
-#     ingester = PDFIngester()
-#     documents = ingester.ingest_all()
-
-#     # Split pages into overlapping chunks
-#     chunker = TextChunker()
-#     chunks = chunker.chunk_documents(documents)
-
-#     # Translate LangChain Documents to plain dicts for the rest of the pipeline
-#     chunk_dicts = _documents_to_dicts(chunks)
-
-#     # Embed every chunk
-#     embedder = Embedder()
-#     texts = [chunk["text"] for chunk in chunk_dicts]
-#     embeddings = embedder.encode(texts)
-
-#     # store chunks + embeddings in ChromaDB
-#     if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
-#         raise RuntimeError("Supabase config variables not set")
-#     store = Supabase(SUPABASE_URL, SUPABASE_SERVICE_KEY)
-#     store.add_chunks(chunk_dicts, embeddings)
-
-#     print("\n✔ Ingestion complete")
-
-
 if __name__ == "__main__":
     run_ingestion()

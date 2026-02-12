@@ -185,7 +185,12 @@ BEGIN
       'keyword'::TEXT as search_type
     FROM public.chunks c
     JOIN public.documents d ON c.document_id = d.id
-    WHERE c.document_id = ANY(p_document_ids)
+    WHERE (
+      -- If the array is empty or null, ignore this filter
+      p_document_ids IS NULL 
+      OR array_length(p_document_ids, 1) IS NULL 
+      OR c.document_id = ANY(p_document_ids)
+    )
       -- The @@ operator checks for a match between the query and the text
       AND to_tsvector('english', c.content) @@ v_query
   ),

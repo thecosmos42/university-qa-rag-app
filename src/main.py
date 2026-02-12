@@ -10,14 +10,15 @@ This is the user-facing entry point for the RAG system.  Run it after
 
 Usage:
     python -m src.ingestion.ingestion_pipeline # Run it once
-    python main.py
+    # python main.py
+    uvicorn src.main:app --reload
 """
 
-from src.ingestion.embedder import Embedder
-from src.vector_store.chroma_db_local import VectorStore
-from src.rag.retriever import Retriever
-from src.rag.prompt_builder import PromptBuilder
-from src.llm.llm import LLM
+# from src.ingestion.embedder import Embedder
+# from src.db.supabase_db import Supabase
+# from src.rag.retriever import Retriever
+# from src.rag.prompt_builder import PromptBuilder
+# from src.llm.llm import LLM
 
 def _format_sources(retrieved_chunks: list[dict]) -> str:
     """

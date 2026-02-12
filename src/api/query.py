@@ -1,10 +1,12 @@
-from fastapi import FastAPI
+from fastapi import APIRouter
 from pydantic import BaseModel
 import supabase
 from src.config.db_config import SUPABASE_URL, SUPABASE_SERVICE_KEY
 from src.ingestion.embedder import Embedder
+from src.api.RAGGenerator import RAGGenerator
 
-app = FastAPI()
+router = APIRouter()
+emb = Embedder()
 
 # Initialize Supabase client
 sb = supabase.create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
@@ -16,14 +18,17 @@ class QueryRequest(BaseModel):
     keyword_weight: float = 0.4
     limit: int = 10
 
-@app.post("/query")
+@router.post("/query")
 def query_rag(req: QueryRequest):
-    # 1. Embed the question
-    question_embedding = Embedder.encode([req.question])[0]
+    # Embed the question
+    question_embedding = emb.encode(texts= [req.question])[0]
 
-    # 2. Call hybrid_search SQL function
+    # print(f"The question is {question_embedding}")
+    # print(f"The request is {req}")
+
+    # Call hybrid_search SQL function
     doc_ids = req.document_ids or []
-    results = sb.rpc(
+    db_results = sb.rpc(
         "hybrid_search",
         {
             "p_question": req.question,
@@ -35,5 +40,26 @@ def query_rag(req: QueryRequest):
         }
     ).execute()
 
+    generator = RAGGenerator(model_name="mistral") # or llama3, etc.
+    final_output = generator.generate_answer(req.question, db_results)
+
+    return final_output
+
+#     # 3. RETURN
+#     return {
+#         "answer": final_output["answer"],
+#         "citations": final_output["sources"],
+#         "debug_results": db_results.data # Keep this for now for debugging
+#     }
+
+#     # 3. RETURN
+#     return {
+#         "answer": final_output["answer"],
+#         "citations": final_output["sources"],
+#         "debug_results": db_results.data # Keep this for now for debugging
+#     }
+
+    # print(f"the results are {results}")
+
     # 3. Return structured response
-    return {"results": results.data}
+    # return {"results": results.data}

@@ -69,3 +69,6 @@ LLM_MAX_NEW_TOKENS: int = 512
 
 # Sampling temperature.  0 = greedy (deterministic); higher = more creative.
 LLM_TEMPERATURE: float = 0.1
+
+
+ENABLE_HISTORY: bool = False
