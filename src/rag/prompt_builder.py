@@ -1,5 +1,5 @@
 # src/rag/prompt_builder.py
-from src.config.config import settings
+from src.config.config import ENABLE_HISTORY
 
 PROMPT_TEMPLATE = """You are a helpful University Assistant. Your goal is to answer questions strictly using the provided SOURCES.
 
@@ -34,7 +34,7 @@ class PromptBuilder:
 
         # 2. Handle History Toggle
         history_block = ""
-        if settings.ENABLE_HISTORY and history:
+        if ENABLE_HISTORY and history:
             lines = ["### PREVIOUS CONVERSATION:"]
             for turn in history[-3:]:  # Limit to last 3 turns for performance
                 lines.append(f"User: {turn['question']}\nAssistant: {turn['answer']}")

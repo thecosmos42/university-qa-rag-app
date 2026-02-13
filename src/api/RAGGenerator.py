@@ -1,8 +1,12 @@
 from src.rag.prompt_builder import PromptBuilder
 from src.llm.local_llm import LLM
+from src.llm.gemini_llm import client, ask_gemini
+from src.config.logger import logger
+
+# Local
+# llm = LLM()
 
 
-llm = LLM()
 
 class RAGGenerator:
     def __init__(self, model_name: str = "llama3"):
@@ -38,6 +42,9 @@ class RAGGenerator:
             retrieved_chunks=formatted_chunks,
             history=[])
         
-        llm_response = llm.generate(full_prompt)
+        logger.info(f"The final prompt is {full_prompt}")
+        
+        # llm_response = llm.generate(full_prompt)
+        llm_response = ask_gemini(client, full_prompt)
 
         return llm_response

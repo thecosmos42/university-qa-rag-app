@@ -1,48 +1,63 @@
-# rag_system/embedder.py
-"""
-Embedding Module
-
-Convert text strings into dense numerical vectors
-"""
-
-from typing import List
-from sentence_transformers import SentenceTransformer
-from src.config.config import EMBEDDING_MODEL_NAME
-
+import os
+from typing import List, Optional
+from google import genai
+from google.genai import types
+from src.config.config import GOOGLE_API_KEY, EMBEDDING_MODEL_NAME
+import time
+from google.genai.errors import ClientError
 
 class Embedder:
-    """Wraps a sentence-transformers model to produce text embeddings."""
+    """Wraps Google Gemini API to produce text embeddings."""
 
-    def __init__(self, model_name: str = EMBEDDING_MODEL_NAME):
+    def __init__(self, model_name: str = "gemini-embedding-001"):
         """
-        Load the embedding model into memory.
-
+        Initialize the Gemini GenAI client.
+        
         Args:
-            model_name: A sentence-transformers model identifier.
-                        Defaults to the value in config.py.
+            model_name: The Gemini embedding model identifier.
+                        Defaults to 'gemini-embedding-001'.
         """
-        print(f"[Embedder] Loading model '{model_name}'...")
-        self.model = SentenceTransformer(model_name)
-        print("[Embedder] Model loaded.")
+        print(f"[Embedder] Initializing Gemini client with model '{model_name}'...")
+        # api_key can be passed explicitly or read from environment variable
+        self.client = genai.Client(api_key=GOOGLE_API_KEY)
+        self.model_name = model_name
+        print("[Embedder] Client initialized.")
 
-    def encode(self, texts: List[str]) -> List[List[float]]:
-        """
-        Encode a list of text strings into vectors.
-
-        Args:
-            texts: One or more strings to embed.
-
-        Returns:
-            A list of embedding vectors (list of floats), one per input string.
-            Each vector has the same dimensionality as the model's output
-            (384 for all-MiniLM-L6-v2).
-        """
+    def encode(self, texts: List[str], task_type: str = "RETRIEVAL_DOCUMENT") -> List[List[float]]:
         if not texts:
             return []
 
-        # sentence-transformers handles batching internally.
-        embeddings = self.model.encode(texts, show_progress_bar=True)
+        all_embeddings = []
+        batch_size = 100 
+        
+        for i in range(0, len(texts), batch_size):
+            batch = texts[i : i + batch_size]
+            
+            # Retry logic for the 429 error
+            max_retries = 3
+            for attempt in range(max_retries):
+                try:
+                    response = self.client.models.embed_content(
+                        model=self.model_name,
+                        contents=batch,
+                        config=types.EmbedContentConfig(
+                            task_type=task_type,
+                            output_dimensionality=768
+                            )
+                    )
+                    all_embeddings.extend([e.values for e in response.embeddings])
+                    
+                    # IMPORTANT: Wait 2-5 seconds between batches to stay under the 100 RPM limit
+                    print(f"Batch {i//batch_size + 1} successful. Cooling down...")
+                    time.sleep(2) 
+                    break 
+                    
+                except ClientError as e:
+                    if "429" in str(e) and attempt < max_retries - 1:
+                        wait_time = 30  # If hit, wait 30s as suggested by the error message
+                        print(f"Quota exceeded. Sleeping for {wait_time}s...")
+                        time.sleep(wait_time)
+                    else:
+                        raise e
 
-        # .encode() returns a NumPy array; convert to plain Python lists
-        # so the result is JSON-serialisable and ChromaDB-compatible.
-        return embeddings.tolist()
+        return all_embeddings

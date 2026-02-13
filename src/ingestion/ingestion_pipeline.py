@@ -73,20 +73,6 @@ def calculate_checksum(file_path: str) -> str:
 
 import numpy as np
 
-def pad_embedding(embedding: list, target_dim: int = 768) -> list:
-    # Convert to numpy array
-    emb_array = np.array(embedding)
-    
-    # Calculate how many zeros to add
-    padding_size = target_dim - len(emb_array)
-    
-    if padding_size > 0:
-        # Add zeros to the end
-        padded = np.pad(emb_array, (0, padding_size), mode='constant')
-        return padded.tolist()
-    
-    return embedding # Already correct or larger
-
 def run_ingestion() -> None:
     store = Supabase(SUPABASE_URL, SUPABASE_SERVICE_KEY)
     ingester = PDFIngester()
@@ -106,7 +92,7 @@ def run_ingestion() -> None:
 
         print(f"[Process] {filename} changed. Starting pipeline...")
 
-        # Load → chunk
+        # Load chunk
         documents = ingester.load_single_pdf(file_path)
         chunks = chunker.chunk_documents(documents)
         chunk_dicts = _documents_to_dicts(chunks)
@@ -114,9 +100,6 @@ def run_ingestion() -> None:
         # Embed
         texts = [c["text"] for c in chunk_dicts]
         embeddings = embedder.encode(texts)
-
-        #COMMENT this line after integrating 768 dim embeddings model
-        # embeddings=pad_embedding(embeddings)
 
         # Single atomic replace
         print("Adding chunks")

@@ -6,7 +6,7 @@ Document objects.
 
 from pathlib import Path
 from typing import List
-import fitz
+# import fitz
 from langchain_community.document_loaders import PyMuPDFLoader
 from langchain_core.documents import Document
 from src.config.config import PDF_INPUT_DIR
@@ -97,81 +97,81 @@ class PDFIngester:
 
         return documents
 
-    @staticmethod
-    def _enrich_with_tables(
-        pdf_path: Path,
-        documents: List[Document],
-    ) -> List[Document]:
-        """
-        Use pymupdf's table finder to detect tables on each page, convert
-        them to structured text, and append that to the page's content.
+    # @staticmethod
+    # def _enrich_with_tables(
+    #     pdf_path: Path,
+    #     documents: List[Document],
+    # ) -> List[Document]:
+    #     """
+    #     Use pymupdf's table finder to detect tables on each page, convert
+    #     them to structured text, and append that to the page's content.
 
-        The structured text is APPENDED (not spliced in place) because
-        reliably locating and removing the flattened table text from the
-        base extraction is fragile.  Appending is safe: the chunker will
-        produce separate chunks for the structured version, and the
-        embedding of the structured rows will be far more semantically
-        useful than the flattened original.
+    #     The structured text is APPENDED (not spliced in place) because
+    #     reliably locating and removing the flattened table text from the
+    #     base extraction is fragile.  Appending is safe: the chunker will
+    #     produce separate chunks for the structured version, and the
+    #     embedding of the structured rows will be far more semantically
+    #     useful than the flattened original.
 
-        Table format (one row per line, header repeated):
-            | Header1 | Header2 | Header3 |
-            | val1    | val2    | val3    |
-            ...
+    #     Table format (one row per line, header repeated):
+    #         | Header1 | Header2 | Header3 |
+    #         | val1    | val2    | val3    |
+    #         ...
 
-        Args:
-            pdf_path:  Path to the PDF (opened again with fitz directly).
-            documents: The LangChain Documents from the base loader.
+    #     Args:
+    #         pdf_path:  Path to the PDF (opened again with fitz directly).
+    #         documents: The LangChain Documents from the base loader.
 
-        Returns:
-            The same list of Documents, with structured table text appended
-            to any page that contained a detected table.
-        """
-        doc = fitz.open(str(pdf_path))
-        table_count = 0
+    #     Returns:
+    #         The same list of Documents, with structured table text appended
+    #         to any page that contained a detected table.
+    #     """
+    #     doc = fitz.open(str(pdf_path))
+    #     table_count = 0
 
-        for page_doc in documents:
-            page_num = page_doc.metadata.get("page", 0)
+    #     for page_doc in documents:
+    #         page_num = page_doc.metadata.get("page", 0)
 
-            # fitz page indices match LangChain's 0-based page numbers
-            if page_num >= len(doc):
-                continue
+    #         # fitz page indices match LangChain's 0-based page numbers
+    #         if page_num >= len(doc):
+    #             continue
 
-            page = doc[page_num]
-            tables = page.find_tables()
+    #         page = doc[page_num]
+    #         tables = page.find_tables()
 
-            if not tables:
-                continue
+    #         if not tables:
+    #             continue
 
-            structured_parts: List[str] = []
-            for table in tables:
-                rows = table.to_pandas().values.tolist()
-                headers = table.to_pandas().columns.tolist()
+    #         structured_parts: List[str] = []
+    #         for table in tables:
+    #             rows = table.to_pandas().values.tolist()
+    #             headers = table.to_pandas().columns.tolist()
 
-                if not rows:
-                    continue
+    #             if not rows:
+    #                 continue
 
-                # Build a pipe-delimited markdown-style table
-                header_line = "| " + " | ".join(str(h) for h in headers) + " |"
-                separator   = "| " + " | ".join("-" * max(len(str(h)), 3) for h in headers) + " |"
-                row_lines   = [
-                    "| " + " | ".join(str(cell) for cell in row) + " |"
-                    for row in rows
-                ]
+    #             # Build a pipe-delimited markdown-style table
+    #             header_line = "| " + " | ".join(str(h) for h in headers) + " |"
+    #             separator   = "| " + " | ".join("-" * max(len(str(h)), 3) for h in headers) + " |"
+    #             row_lines   = [
+    #                 "| " + " | ".join(str(cell) for cell in row) + " |"
+    #                 for row in rows
+    #             ]
 
-                table_text = "\n".join([header_line, separator] + row_lines)
-                structured_parts.append(table_text)
-                table_count += 1
+    #             table_text = "\n".join([header_line, separator] + row_lines)
+    #             structured_parts.append(table_text)
+    #             table_count += 1
 
-            if structured_parts:
-                # Append with a clear separator so the chunker can split here
-                page_doc.page_content += (
-                    "\n\n[Structured Tables]\n\n"
-                    + "\n\n".join(structured_parts)
-                )
+    #         if structured_parts:
+    #             # Append with a clear separator so the chunker can split here
+    #             page_doc.page_content += (
+    #                 "\n\n[Structured Tables]\n\n"
+    #                 + "\n\n".join(structured_parts)
+    #             )
 
-        doc.close()
+    #     doc.close()
 
-        if table_count:
-            print(f"[PDFIngester] Extracted {table_count} table(s) from '{pdf_path.name}'")
+    #     if table_count:
+    #         print(f"[PDFIngester] Extracted {table_count} table(s) from '{pdf_path.name}'")
 
-        return documents
+    #     return documents

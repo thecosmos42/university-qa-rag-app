@@ -11,5 +11,6 @@ fastapi
 uvicorn
 python-dotenv
 supabase
+google-genai
 # torch
 # pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128

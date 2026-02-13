@@ -21,10 +21,7 @@ class QueryRequest(BaseModel):
 @router.post("/query")
 def query_rag(req: QueryRequest):
     # Embed the question
-    question_embedding = emb.encode(texts= [req.question])[0]
-
-    # print(f"The question is {question_embedding}")
-    # print(f"The request is {req}")
+    question_embedding = emb.encode(texts= [req.question], task_type="RETRIEVAL_QUERY")[0]
 
     # Call hybrid_search SQL function
     doc_ids = req.document_ids or []

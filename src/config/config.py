@@ -70,5 +70,11 @@ LLM_MAX_NEW_TOKENS: int = 512
 # Sampling temperature.  0 = greedy (deterministic); higher = more creative.
 LLM_TEMPERATURE: float = 0.1
 
-
+# Flag for enabling history context for prompts
 ENABLE_HISTORY: bool = False
+
+# Logger path
+LOGGER_PATH = "./logs"
+
+# GOOGLE_API_KEY = "AIzaSyA1z1RST_08S_-4F-4LcVKqSY9gPbkDD3A"
+GOOGLE_API_KEY = "AIzaSyDIrxaqTIlqefBIxUm9EBAphml0IKVdgQY"
