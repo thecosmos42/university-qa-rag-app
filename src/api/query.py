@@ -39,15 +39,20 @@ def query_rag(req: QueryRequest):
 
     generator = RAGGenerator(model_name="mistral") # or llama3, etc.
     final_output = generator.generate_answer(req.question, db_results)
+    sources = [
+        "Studiegids.pdf"                 
+    ]
 
-    return final_output
+    return {
+        "response": final_output,
+        "sources": sources
+    }
 
-#     # 3. RETURN
-#     return {
-#         "answer": final_output["answer"],
-#         "citations": final_output["sources"],
-#         "debug_results": db_results.data # Keep this for now for debugging
-#     }
+    # return {
+    #     "answer": final_output,
+    #     "citations": db_results.data,
+        # "debug_results": db_results.data # Keep this for now for debugging
+    # }
 
 #     # 3. RETURN
 #     return {
@@ -58,5 +63,4 @@ def query_rag(req: QueryRequest):
 
     # print(f"the results are {results}")
 
-    # 3. Return structured response
-    # return {"results": results.data}
+
