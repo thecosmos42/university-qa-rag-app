@@ -28,13 +28,17 @@ class Embedder:
             return []
 
         all_embeddings = []
-        batch_size = 100 
+        # Small batches + longer cooldown to stay under free-tier limits
+        # Free tier: 100 RPM, 30k TPM
+        batch_size = 20
         
+        total_batches = (len(texts) + batch_size - 1) // batch_size
         for i in range(0, len(texts), batch_size):
             batch = texts[i : i + batch_size]
+            batch_num = i // batch_size + 1
             
             # Retry logic for the 429 error
-            max_retries = 3
+            max_retries = 5
             for attempt in range(max_retries):
                 try:
                     response = self.client.models.embed_content(
@@ -47,15 +51,16 @@ class Embedder:
                     )
                     all_embeddings.extend([e.values for e in response.embeddings])
                     
-                    # IMPORTANT: Wait 2-5 seconds between batches to stay under the 100 RPM limit
-                    print(f"Batch {i//batch_size + 1} successful. Cooling down...")
-                    time.sleep(2) 
+                    print(f"  Batch {batch_num}/{total_batches} done ({len(batch)} texts)")
+                    # Only sleep between batches (not after the last/only one)
+                    if batch_num < total_batches:
+                        time.sleep(8)
                     break 
                     
                 except ClientError as e:
                     if "429" in str(e) and attempt < max_retries - 1:
-                        wait_time = 30  # If hit, wait 30s as suggested by the error message
-                        print(f"Quota exceeded. Sleeping for {wait_time}s...")
+                        wait_time = 60
+                        print(f"  Rate limited. Waiting {wait_time}s (attempt {attempt+1}/{max_retries})...")
                         time.sleep(wait_time)
                     else:
                         raise e

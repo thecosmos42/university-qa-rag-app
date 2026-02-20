@@ -5,7 +5,7 @@ PROMPT_TEMPLATE = """You are a helpful University Assistant. Your goal is to ans
 
 ### RULES:
 1. If the answer is not in the SOURCES, say: "I don't have enough information to answer that."
-2. ALWAYS cite the source number in brackets for every claim you make, e.g., "The exam is on Friday [SOURCE 1]."
+2. ALWAYS cite the source number and Page number(if present) in brackets for every claim you make, e.g., "The exam is on Friday [SOURCE 1]."
 3. If multiple sources support a claim, list them: [SOURCE 1, SOURCE 2].
 4. Answer concisely and do not add information from outside the sources.
 
@@ -20,7 +20,7 @@ Answer:"""
 class PromptBuilder:
     @staticmethod
     def build(question: str, retrieved_chunks: list[dict], history: list[dict] | None = None) -> str:
-        # 1. Format and Number the Context
+        # Format and Number the Context
         context_parts = []
         for i, chunk in enumerate(retrieved_chunks, start=1):
             # Clean text: Remove extra newlines and trim whitespace

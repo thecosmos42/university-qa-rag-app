@@ -76,5 +76,10 @@ ENABLE_HISTORY: bool = False
 # Logger path
 LOGGER_PATH = "./logs"
 
-# GOOGLE_API_KEY = "AIzaSyA1z1RST_08S_-4F-4LcVKqSY9gPbkDD3A"
-GOOGLE_API_KEY = "AIzaSyDIrxaqTIlqefBIxUm9EBAphml0IKVdgQY"
+import os
+from dotenv import load_dotenv
+load_dotenv()
+
+GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
+if not GOOGLE_API_KEY:
+    raise ValueError("GOOGLE_API_KEY not set. Add it to your .env file.")

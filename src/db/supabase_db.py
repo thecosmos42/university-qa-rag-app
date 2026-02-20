@@ -31,6 +31,7 @@ class Supabase:
         """
         Performs an atomic-like refresh of a document: 
         Updates metadata, purges old vectors, and inserts new ones.
+        Now includes structured metadata (course_name, course_code, etc.)
         """
         # Upsert document row
         doc_res = (
@@ -58,7 +59,7 @@ class Supabase:
             .execute()
         )
 
-        # Insert new chunks
+        # Insert new chunks with structured metadata
         payload = [
             {
                 "document_id": doc_id,
@@ -66,15 +67,31 @@ class Supabase:
                 "embedding": e,
                 "page_number": c.get("page", 0),
                 "chunk_index": c["chunk_index"],
-                "metadata": {"source": filename},
+                "metadata": {
+                    "source": filename,
+                    "course_name": c.get("course_name", ""),
+                    "course_code": c.get("course_code", ""),
+                    "credits": c.get("credits", ""),
+                    "section_type": c.get("section_type", ""),
+                },
+                # Structured columns for SQL-level filtering
+                "course_name": c.get("course_name") or None,
+                "course_code": c.get("course_code") or None,
+                "degree_name": c.get("degree_name") or None,
+                "section_type": c.get("section_type") or None,
             }
             for c, e in zip(chunks, embeddings)
         ]
 
-        print(f"The PAyload is: {payload}")
+        print(f"[Supabase] Inserting {len(payload)} chunks for '{filename}'")
 
         if payload:
-            self.supabase.table("chunks").insert(payload).execute()
+            # Insert in batches of 50 to avoid payload size limits
+            batch_size = 50
+            for i in range(0, len(payload), batch_size):
+                batch = payload[i:i + batch_size]
+                self.supabase.table("chunks").insert(batch).execute()
+                print(f"  Batch {i // batch_size + 1} inserted ({len(batch)} chunks)")
 
         print(f"[OK] {filename} ingested ({len(payload)} chunks)")
 
@@ -95,3 +112,17 @@ class Supabase:
             return True
 
         return res.data[0]["checksum"] != checksum
+    
+    def force_update(self, filename: str) -> None:
+        """
+        Force re-ingestion by deleting existing document entry.
+        Useful when schema changes require re-processing.
+        """
+        (
+            self.supabase
+            .table("documents")
+            .delete()
+            .eq("filename", filename)
+            .execute()
+        )
+        print(f"[Force] Cleared '{filename}' from DB for re-ingestion.")

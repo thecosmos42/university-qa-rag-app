@@ -1,11 +1,5 @@
-import os
 from google import genai
-from dotenv import load_dotenv
 from src.config.config import GOOGLE_API_KEY
-
-# Initialize the client (it automatically looks for GOOGLE_API_KEY)
-if GOOGLE_API_KEY == None:
-    raise KeyError("Gemini Key not present!")
 
 client = genai.Client(api_key=GOOGLE_API_KEY)
 

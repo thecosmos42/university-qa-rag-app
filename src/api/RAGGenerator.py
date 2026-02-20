@@ -3,25 +3,21 @@ from src.llm.local_llm import LLM
 from src.llm.gemini_llm import client, ask_gemini
 from src.config.logger import logger
 
-# Local
-# llm = LLM()
-
-
-
 class RAGGenerator:
-    def __init__(self, model_name: str = "llama3"):
-        self.model_name = model_name
+    def __init__(self):
+        # self.model_name = model_name
+        pass
 
-    def format_context(self, search_results: list[dict]) -> str:
-        """Converts DB results into a formatted string for the LLM."""
-        context_blocks = []
-        for i, res in enumerate(search_results):
-            # removing \n
-            clean_text = " ".join(res["content"].split())
-            block = f"Source {i+1} [{res['filename']}, Page {res['page_number']}]: {clean_text}"
-            context_blocks.append(block)
+    # def format_context(self, search_results: list[dict]) -> str:
+    #     """Converts DB results into a formatted string for the LLM."""
+    #     context_blocks = []
+    #     for i, res in enumerate(search_results):
+    #         # removing \n
+    #         clean_text = " ".join(res["content"].split())
+    #         block = f"Source {i+1} [{res['filename']}, Page {res['page_number']}]: {clean_text}"
+    #         context_blocks.append(block)
         
-        return "\n\n".join(context_blocks)
+    #     return "\n\n".join(context_blocks)
 
     def generate_answer(self, question: str, search_results: list[dict]) -> dict:
         # context = self.format_context(search_results)

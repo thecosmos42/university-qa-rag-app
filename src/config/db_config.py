@@ -1,2 +1,9 @@
-SUPABASE_URL = "https://qarifhtgfjangfvzqowa.supabase.co"
-SUPABASE_SERVICE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFhcmlmaHRnZmphbmdmdnpxb3dhIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MDk4MzI0MSwiZXhwIjoyMDg2NTU5MjQxfQ.es1s4QQBYlSpXRLAdnUm1Wb-dIXNwE3zEY2snnmJeag"
+import os
+from dotenv import load_dotenv
+load_dotenv()
+
+SUPABASE_URL = os.environ.get("SUPABASE_URL")
+SUPABASE_SERVICE_KEY = os.environ.get("SUPABASE_SERVICE_KEY")
+
+if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
+    raise ValueError("SUPABASE_URL and SUPABASE_SERVICE_KEY must be set in your .env file.")
