@@ -1,3 +1,4 @@
+import asyncio
 import time
 from google import genai
 from google.genai.errors import ClientError
@@ -21,9 +22,11 @@ def _is_rate_limit(exc: ClientError) -> bool:
     return "429" in str(exc) or "RESOURCE_EXHAUSTED" in str(exc)
 
 
-def ask_gemini(prompt: str, model: str = "gemini-2.5-flash") -> dict:
+def _ask_gemini_sync(prompt: str, model: str = "gemini-2.5-flash") -> dict:
     """
-    Call the Gemini generate_content API with automatic key rotation and retry.
+    Synchronous Gemini call with key rotation and retry.
+    Do not call this directly from async code — use the async wrapper `ask_gemini`
+    which runs this function in a thread pool so the event loop stays free.
 
     Rotation strategy:
       1. Try the current key.
@@ -81,3 +84,14 @@ def ask_gemini(prompt: str, model: str = "gemini-2.5-flash") -> dict:
         "Consider adding more keys (GOOGLE_API_KEY_2, GOOGLE_API_KEY_3, …) "
         "to your .env file, or upgrade to a paid Gemini API tier."
     ) from last_exc
+
+
+async def ask_gemini(prompt: str, model: str = "gemini-2.5-flash") -> dict:
+    """
+    Async wrapper around `_ask_gemini_sync`.
+
+    Runs the blocking Gemini HTTP call AND any rate-limit sleep inside a
+    thread-pool worker via asyncio.to_thread, so the FastAPI event loop
+    is never blocked regardless of how long the call or back-off takes.
+    """
+    return await asyncio.to_thread(_ask_gemini_sync, prompt, model)

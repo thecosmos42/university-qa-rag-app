@@ -7,7 +7,7 @@ class LLMWrapper:
     def __init__(self):
         pass
 
-    def generate_answer(self, question: str, search_results: list[dict]) -> dict:
+    async def generate_answer(self, question: str, search_results: list[dict]) -> dict:
         # TRANSFORM (Map DB keys to match what PromptBuilder expects)
         formatted_chunks = [
             {
@@ -30,4 +30,4 @@ class LLMWrapper:
         logger.info(f"The final prompt is {full_prompt}")
         
         # Returns {"text": ..., "tokens": {"prompt": N, "response": N, "total": N}}
-        return ask_gemini(full_prompt)
+        return await ask_gemini(full_prompt)

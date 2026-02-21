@@ -8,15 +8,23 @@ so that changing behaviour never requires hunting through code.
 
 from pathlib import Path
 
+# ---------------------------------------------------------------------------
+# Project root — anchored to this file so paths resolve correctly regardless
+# of the working directory when uvicorn / the process manager starts.
+# config.py lives at <root>/src/config/config.py → three .parent() calls.
+# ---------------------------------------------------------------------------
+_PROJECT_ROOT: Path = Path(__file__).resolve().parent.parent.parent
+
 
 # ---------------------------------------------------------------------------
 # Paths
 # ---------------------------------------------------------------------------
 # Directory where user PDF files are placed for ingestion.
-PDF_INPUT_DIR: Path = Path("./data/pdfs")
+PDF_INPUT_DIR: Path = _PROJECT_ROOT / "data" / "pdfs"
 
 # Root directory where ChromaDB will persist its vector store on disk.
-CHROMA_PERSIST_DIR: Path = Path("./src/db")
+# Kept outside src/ so it is writable even when source tree is read-only.
+CHROMA_PERSIST_DIR: Path = _PROJECT_ROOT / "data" / "chromadb"
 
 
 # ---------------------------------------------------------------------------
@@ -89,8 +97,8 @@ LLM_TEMPERATURE: float = 0.1
 # Flag for enabling history context for prompts
 ENABLE_HISTORY: bool = False
 
-# Logger path
-LOGGER_PATH = "./logs"
+# Logger path — absolute so it works regardless of cwd.
+LOGGER_PATH: str = str(_PROJECT_ROOT / "logs")
 
 import os
 from dotenv import load_dotenv
@@ -102,7 +110,7 @@ if not GOOGLE_API_KEY:
 
 # Support multiple Gemini keys for rate-limit rotation.
 # Add GOOGLE_API_KEY_2, GOOGLE_API_KEY_3, … to .env as needed.
-GOOGLE_API_KEYS: list[str] = [GOOGLE_API_KEY]
+GOOGLE_API_KEYS: list[str] = [GOOGLE_API_KEY] if GOOGLE_API_KEY else []
 for _i in range(2, 10):
     _extra = os.environ.get(f"GOOGLE_API_KEY_{_i}")
     if _extra:

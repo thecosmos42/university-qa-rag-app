@@ -1,3 +1,4 @@
+import os
 from fastapi import APIRouter
 from pydantic import BaseModel
 import supabase
@@ -17,6 +18,10 @@ generator = LLMWrapper()
 program_extractor = ProgramExtractor()
 sb = supabase.create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
 
+# Expose internal debug info only when explicitly enabled.
+# Set DEBUG_MODE=true in .env for local debugging; leave unset in production.
+_DEBUG_MODE: bool = os.environ.get("DEBUG_MODE", "false").lower() == "true"
+
 class QueryRequest(BaseModel):
     question: str
     document_ids: list[str] = None
@@ -25,7 +30,7 @@ class QueryRequest(BaseModel):
     limit: int = 10
 
 @router.post("/query")
-def query_rag(req: QueryRequest):
+async def query_rag(req: QueryRequest):
     t_start = time.time()
 
     # # Query rewriting disabled for now
@@ -102,7 +107,7 @@ def query_rag(req: QueryRequest):
             logger.info(f"  - Search Type: {res.get('search_type')}")
 
     # Generate answer
-    llm_result = generator.generate_answer(req.question, db_results)
+    llm_result = await generator.generate_answer(req.question, db_results)
     final_output = llm_result["text"]
     token_usage = llm_result["tokens"]
     t_llm = time.time()
@@ -142,14 +147,16 @@ def query_rag(req: QueryRequest):
                     "href": res.get("program_url") or None,
                 })
 
-    return {
+    result = {
         "response": final_output,
         "sources": sources,
-        "debug": {
+    }
+    if _DEBUG_MODE:
+        result["debug"] = {
             "result_count": len(db_results.data),
             "tokens": token_usage,
             "program_filter": {
                 "programs": prog_filter.program_names or "all",
             },
         }
-    }
+    return result

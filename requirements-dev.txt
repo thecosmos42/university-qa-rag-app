@@ -1,0 +1,12 @@
+# Development / local-inference dependencies
+# Install these ONLY when using EMBEDDING_BACKEND=local (GPU/CPU sentence-transformers).
+# These are NOT needed in production where EMBEDDING_BACKEND=huggingface or gemini.
+#
+# GPU-accelerated torch (CUDA 12.8):
+#   pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128
+# CPU-only torch:
+#   pip install torch torchvision torchaudio
+sentence-transformers
+transformers
+accelerate
+torch

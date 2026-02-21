@@ -1,23 +1,23 @@
+# Core production dependencies
+# Heavy ML packages (torch, sentence-transformers, transformers, accelerate)
+# are in requirements-dev.txt — only needed for EMBEDDING_BACKEND=local.
 PyPDF2
-sentence-transformers
 chromadb
-transformers
 pymupdf
 langchain-community
 langchain-text-splitters
-accelerate
 supabase
 fastapi
 uvicorn
 python-dotenv
-supabase
 google-genai
 requests
 pdfplumber
-playwright 
-httpx 
-beautifulsoup4 
+playwright
+httpx
+beautifulsoup4
 tqdm
 google-api-core
+huggingface-hub
 torch
 # pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128
