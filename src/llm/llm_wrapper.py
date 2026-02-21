@@ -1,5 +1,4 @@
 from src.llm.prompt_builder import PromptBuilder
-from src.llm.local_llm import LLM
 from src.llm.gemini_llm import ask_gemini
 from src.config.logger import logger
 
