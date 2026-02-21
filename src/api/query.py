@@ -12,11 +12,28 @@ from src.config.logger import logger
 import re
 
 router = APIRouter()
-emb = get_embedder()
-rewriter = QueryRewriter()
-generator = LLMWrapper()
-program_extractor = ProgramExtractor()
-sb = supabase.create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
+
+# Resources are initialised to None at import time so that importing this
+# module never triggers heavy I/O (API calls, model loads, DB connections).
+# Call _init_resources() inside the FastAPI lifespan hook so uvicorn can bind
+# the port before any of this work begins — required for Render / Railway.
+emb = None
+rewriter = None
+generator = None
+program_extractor = None
+sb = None
+
+
+def _init_resources() -> None:
+    """Initialise all shared resources. Called once from the app lifespan."""
+    global emb, rewriter, generator, program_extractor, sb
+    logger.info("[Startup] Initialising resources…")
+    emb = get_embedder()
+    rewriter = QueryRewriter()
+    generator = LLMWrapper()
+    program_extractor = ProgramExtractor()
+    sb = supabase.create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
+    logger.info("[Startup] All resources ready.")
 
 # Expose internal debug info only when explicitly enabled.
 # Set DEBUG_MODE=true in .env for local debugging; leave unset in production.

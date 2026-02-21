@@ -13,9 +13,10 @@ Usage:
     uvicorn main:app --reload
 """
 import os
+from contextlib import asynccontextmanager
 import uvicorn
 from fastapi import FastAPI
-from src.api.query import router as query_router
+from src.api.query import router as query_router, _init_resources
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 
@@ -26,9 +27,26 @@ load_dotenv()
 _raw_origins = os.environ.get("ALLOWED_ORIGINS", "http://localhost:3000")
 ALLOWED_ORIGINS: list[str] = [o.strip() for o in _raw_origins.split(",") if o.strip()]
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """
+    FastAPI lifespan hook — runs AFTER uvicorn has bound the port.
+
+    Render (and similar platforms) scan for an open port immediately after
+    the process starts.  By deferring all heavy initialisation here we ensure
+    the port is visible before any API calls, model loads, or DB connections
+    are attempted.
+    """
+    _init_resources()
+    yield
+    # Add any teardown logic here if needed.
+
+
 app = FastAPI(
     title="University RAG backend",
-    version="0.1.0"
+    version="0.1.0",
+    lifespan=lifespan,
 )
 
 # Add CORS middleware BEFORE your routes
