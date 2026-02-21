@@ -1,4 +1,3 @@
-# rag_system/ingestion_pipeline.py
 """
 Ingestion Pipeline
 Orchestrate the full ingestion flow:
@@ -16,7 +15,7 @@ Usage:
 from pathlib import Path
 from typing import List
 from src.ingestion.pdf_ingester import PDFIngester
-from src.ingestion.academic_chunker import AcademicChunker
+from src.ingestion.curriculum_chunker import AcademicChunker
 from src.ingestion.embedder import Embedder
 from src.db.supabase_db import Supabase
 from src.config.db_config import SUPABASE_URL, SUPABASE_SERVICE_KEY
@@ -82,9 +81,10 @@ def run_ingestion(force: bool = False) -> None:
     store = Supabase(SUPABASE_URL, SUPABASE_SERVICE_KEY)
     ingester = PDFIngester()
     chunker = AcademicChunker(
-        max_chunk_size=2500,
-        chunk_overlap=150,
-        min_chunk_size=100,
+        code_field_synonyms=["Cursus Code", "Kode", "Module Nr."],
+        credits_field_synonyms=["ECTS", "Studiepunten", "Credits"],
+        period_field_synonyms=["Periode", "Semester", "Trimester"],
+        track_keywords=["richting", "profiel", "specialisatie", "track"],
     )
     embedder = Embedder()
 

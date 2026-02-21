@@ -4,16 +4,15 @@ import supabase
 import time
 from src.config.db_config import SUPABASE_URL, SUPABASE_SERVICE_KEY
 from src.ingestion.embedder import Embedder
-from src.api.RAGGenerator import RAGGenerator
-from src.rag.query_rewriter import QueryRewriter
+from src.llm.llm_wrapper import LLMWrapper
+from src.llm.query_rewriter import QueryRewriter
 from src.config.logger import logger
+import re
 
 router = APIRouter()
 emb = Embedder()
 rewriter = QueryRewriter()
-generator = RAGGenerator()  # Reuse across requests
-
-# Initialize Supabase client
+generator = LLMWrapper()
 sb = supabase.create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
 
 class QueryRequest(BaseModel):
@@ -32,7 +31,6 @@ def query_rag(req: QueryRequest):
     # t_rewrite = time.time()
     # logger.info(f"Rewritten query: {rewritten.rewritten_query}")
 
-    # Use original question directly
     search_query = req.question
     logger.info(f"Query: {search_query}")
 
@@ -62,7 +60,6 @@ def query_rag(req: QueryRequest):
     ).execute()
     t_search = time.time()
 
-    # Compact logging — one line per result instead of 6
     for i, res in enumerate(db_results.data):
         logger.info(
             f"RANK {i+1} | {res.get('search_type')} | "
@@ -95,8 +92,10 @@ def query_rag(req: QueryRequest):
             logger.info(f"  - Combined (RRF) Score: {res.get('combined_score')}")
             logger.info(f"  - Search Type: {res.get('search_type')}")
 
-    # Step 5: Generate answer
-    final_output = generator.generate_answer(req.question, db_results)
+    # Generate answer
+    llm_result = generator.generate_answer(req.question, db_results)
+    final_output = llm_result["text"]
+    token_usage = llm_result["tokens"]
     t_llm = time.time()
     
     # Timing summary
@@ -107,9 +106,15 @@ def query_rag(req: QueryRequest):
         f"llm={t_llm-t_search:.2f}s | "
         f"total={t_llm-t_start:.2f}s"
     )
+    # Token usage summary
+    logger.info(
+        f"[Tokens] "
+        f"prompt={token_usage['prompt']} | "
+        f"response={token_usage['response']} | "
+        f"total={token_usage['total']}"
+    )
     
     # Extract which SOURCE numbers the LLM actually cited in its answer
-    import re
     cited_indices = set(int(n) for n in re.findall(r'\[SOURCE\s+(\d+)', final_output))
 
     # Only return sources that were actually cited
@@ -130,5 +135,6 @@ def query_rag(req: QueryRequest):
         "sources": sources,
         "debug": {
             "result_count": len(db_results.data),
+            "tokens": token_usage,
         }
     }

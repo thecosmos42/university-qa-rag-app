@@ -32,7 +32,7 @@ class PromptBuilder:
         
         context_str = "\n\n".join(context_parts)
 
-        # 2. Handle History Toggle
+        # handle History Toggle
         history_block = ""
         if ENABLE_HISTORY and history:
             lines = ["### PREVIOUS CONVERSATION:"]
@@ -40,7 +40,7 @@ class PromptBuilder:
                 lines.append(f"User: {turn['question']}\nAssistant: {turn['answer']}")
             history_block = "\n".join(lines) + "\n\n"
 
-        # 3. Assemble Final Prompt
+        # Assemble Final Prompt
         return PROMPT_TEMPLATE.format(
             history_block=history_block,
             context=context_str,

@@ -5,12 +5,15 @@ client = genai.Client(api_key=GOOGLE_API_KEY)
 
 def ask_gemini(client, prompt):
     response = client.models.generate_content(
-        model="gemini-2.5-flash", 
+        model="gemini-2.5-flash",
         contents=prompt
     )
-    return response.text
-
-# Test it out
-if __name__ == "__main__":
-    result = ask_gemini("Tell me a short joke about a data scientist.")
-    print(f"Gemini: {result}")
+    usage = response.usage_metadata
+    return {
+        "text": response.text,
+        "tokens": {
+            "prompt": usage.prompt_token_count if usage else 0,
+            "response": usage.candidates_token_count if usage else 0,
+            "total": usage.total_token_count if usage else 0,
+        }
+    }
