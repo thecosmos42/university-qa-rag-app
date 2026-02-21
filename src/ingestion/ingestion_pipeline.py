@@ -12,10 +12,9 @@ Usage:
     python -m src.ingestion.ingestion_pipeline --force   # Force re-ingestion
 """
 
-from pathlib import Path
-from typing import List
 from src.ingestion.pdf_ingester import PDFIngester
-from src.ingestion.curriculum_chunker import AcademicChunker
+from src.ingestion.curriculum_chunker import CurriculumChunker
+from src.ingestion.policy_chunker import PolicyChunker
 from src.ingestion.embedder import Embedder
 from src.db.supabase_db import Supabase
 from src.config.db_config import SUPABASE_URL, SUPABASE_SERVICE_KEY
@@ -25,48 +24,6 @@ import sys
 import json
 import hashlib
 
-
-def _documents_to_dicts(chunks) -> List[dict]:
-    """
-    Convert LangChain Document objects into the plain dicts that the
-    Embedder and Supabase expect.
-
-    Now includes structured metadata extracted by AcademicChunker:
-    course_name, course_code, credits, degree_name, section_type.
-
-    Args:
-        chunks: List of LangChain Document objects as returned by
-                AcademicChunker.chunk_documents().
-
-    Returns:
-        A list of dicts with text, source, page, chunk_index, and metadata.
-    """
-    result: List[dict] = []
-    for doc in chunks:
-        source_path = doc.metadata.get("source", "unknown")
-        source_name = Path(source_path).name
-
-        result.append({
-            "text": doc.page_content,
-            "source": source_name,
-            "page": doc.metadata.get("page", 0),
-            "chunk_index": doc.metadata.get("chunk_index", 0),
-            # Structured metadata from AcademicChunker
-            "course_name": doc.metadata.get("course_name", ""),
-            "course_code": doc.metadata.get("course_code", ""),
-            "credits": doc.metadata.get("credits", ""),
-            "degree_name": doc.metadata.get("degree_name", ""),
-            "section_type": doc.metadata.get("section_type", ""),
-        })
-    
-    # Print a sample of first 3 chunks to verify metadata extraction
-    for i, chunk in enumerate(result[:3]):
-        print(f"--- Chunk {i} ---")
-        print(f"  Course: {chunk['course_name']} | Code: {chunk['course_code']}")
-        print(f"  Section: {chunk['section_type']} | Page: {chunk['page']}")
-        print(f"  Content: {chunk['text'][:120]}...")
-    
-    return result
 
 def calculate_checksum(file_path: str) -> str:
     """Helper to hash the file content."""
@@ -80,12 +37,13 @@ def calculate_checksum(file_path: str) -> str:
 def run_ingestion(force: bool = False) -> None:
     store = Supabase(SUPABASE_URL, SUPABASE_SERVICE_KEY)
     ingester = PDFIngester()
-    chunker = AcademicChunker(
-        code_field_synonyms=["Cursus Code", "Kode", "Module Nr."],
-        credits_field_synonyms=["ECTS", "Studiepunten", "Credits"],
-        period_field_synonyms=["Periode", "Semester", "Trimester"],
-        track_keywords=["richting", "profiel", "specialisatie", "track"],
+    curriculum_chunker = CurriculumChunker(
+        code_field_synonyms=["Module Nr."],
+        credits_field_synonyms=["ECTS", "Credits"],
+        period_field_synonyms=["Period", "Semester", "Trimester"],
+        track_keywords=["specialisatie", "track"],
     )
+    policy_chunker = PolicyChunker()
     embedder = Embedder()
 
     # Define a cache directory for embeddings
@@ -109,12 +67,15 @@ def run_ingestion(force: bool = False) -> None:
 
         print(f"[Process] {filename} — Starting pipeline...")
 
-        # Load pages from PDF
-        documents = ingester.load_single_pdf(file_path)
-        
-        # Course-aware chunking (detects course boundaries, extracts metadata)
-        chunks = chunker.chunk_documents(documents)
-        chunk_dicts = _documents_to_dicts(chunks)
+        if filename.lower().startswith("ter"):
+            print("[Chunker] Using PolicyChunker for TER document")
+            chunk_dicts = policy_chunker.chunk_pdf(file_path)
+        else:
+            print("[Chunker] Using CurriculumChunker for curriculum document")
+            # Load pages from PDF
+            documents = ingester.load_single_pdf(file_path)
+            # Course-aware chunking (detects course boundaries, extracts metadata)
+            chunk_dicts = curriculum_chunker.chunk_documents(documents)
 
         embeddings = None
         # Try to load embeddings from cache if not forcing re-ingestion

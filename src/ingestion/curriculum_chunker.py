@@ -39,7 +39,7 @@ For this specific academic PDF the context enrichment is:
 
 OPTIONAL LLM SUMMARIZER
 -----------------------
-Pass a callable `context_summarizer` to AcademicChunker() to replace the
+Pass a callable `context_summarizer` to CurriculumChunker() to replace the
 default structured-context approach with LLM-generated summaries (matching
 the Databricks article's `summarize=True` path):
 
@@ -47,7 +47,7 @@ the Databricks article's `summarize=True` path):
         # Call your LLM endpoint here
         return llm.invoke(f"Summarise in 1 sentence: {text}")
 
-    chunker = AcademicChunker(context_summarizer=my_summarizer)
+    chunker = CurriculumChunker(context_summarizer=my_summarizer)
 
 Without a summarizer, the chunker uses structured neighbour metadata instead
 (zero extra latency, no external calls).
@@ -86,14 +86,14 @@ Explicit patterns can be supplied to override this.
 QUICKSTART
 ----------
     from langchain_community.document_loaders import PyPDFLoader
-    from academic_chunker import AcademicChunker
+    from academic_chunker import CurriculumChunker
 
     # Zero config — auto-detects footers, works for any programme
     docs   = PyPDFLoader("any_catalogue.pdf").load()
-    chunks = AcademicChunker().chunk_documents(docs)
+    chunks = CurriculumChunker().chunk_documents(docs)
 
     # Non-English or unusual field labels
-    chunks = AcademicChunker(
+    chunks = CurriculumChunker(
         code_field_synonyms=["Cursus Code", "Kode", "Module Nr."],
         credits_field_synonyms=["ECTS", "Studiepunten", "Credits"],
         period_field_synonyms=["Periode", "Semester", "Trimester"],
@@ -101,7 +101,7 @@ QUICKSTART
     ).chunk_documents(docs)
 
     # With an LLM summarizer (Databricks article summarize=True path)
-    chunks = AcademicChunker(
+    chunks = CurriculumChunker(
         context_summarizer=lambda text: llm.invoke(
             f"Summarise in one sentence: {text}"
         )
@@ -114,6 +114,9 @@ from typing import Callable, Dict, List, Optional, Tuple
 
 from langchain_core.documents import Document
 from langchain_text_splitters import RecursiveCharacterTextSplitter
+
+from pathlib import Path
+from typing import List
 
 
 # ---------------------------------------------------------------------------
@@ -308,7 +311,7 @@ class CourseSection:
 # Main chunker
 # ---------------------------------------------------------------------------
 
-class AcademicChunker:
+class CurriculumChunker:
     """
     Splits any structured academic PDF into context-enriched course chunks.
 
@@ -477,18 +480,63 @@ class AcademicChunker:
         sections              = self._split_into_sections(full_text, page_map, source)
         sections              = self._enrich_with_context(sections)
         chunks                = self._sections_to_documents(sections)
+        dicts                 = self._documents_to_dicts(chunks)
 
         for i, chunk in enumerate(chunks):
             chunk.metadata["chunk_index"] = i
 
         footer_mode = "explicit" if self._explicit_footer_patterns else "auto-detected"
         print(
-            f"[AcademicChunker] {len(documents)} pages -> "
+            f"[CurriculumChunker] {len(documents)} pages -> "
             f"{len(sections)} sections -> {len(chunks)} chunks  "
             f"(window={self.window_size}, footer={footer_mode}, "
             f"summarizer={'LLM' if self.context_summarizer else 'structured'})"
         )
-        return chunks
+        
+        return dicts
+
+    def _documents_to_dicts(self, chunks) -> List[dict]:
+        """
+        Convert LangChain Document objects into the plain dicts that the
+        Embedder and Supabase expect.
+
+        Now includes structured metadata extracted by CurriculumChunker:
+        course_name, course_code, credits, degree_name, section_type.
+
+        Args:
+            chunks: List of LangChain Document objects as returned by
+                    CurriculumChunker.chunk_documents().
+
+        Returns:
+            A list of dicts with text, source, page, chunk_index, and metadata.
+        """
+        result: List[dict] = []
+        for doc in chunks:
+            source_path = doc.metadata.get("source", "unknown")
+            source_name = Path(source_path).name
+
+            result.append({
+                "text": doc.page_content,
+                "source": source_name,
+                "page": doc.metadata.get("page", 0),
+                "chunk_index": doc.metadata.get("chunk_index", 0),
+                # Structured metadata from CurriculumChunker
+                "course_name": doc.metadata.get("course_name", ""),
+                "course_code": doc.metadata.get("course_code", ""),
+                "credits": doc.metadata.get("credits", ""),
+                "degree_name": doc.metadata.get("degree_name", ""),
+                "section_type": doc.metadata.get("section_type", ""),
+            })
+        
+        # Print a sample of first chunk to verify metadata extraction
+        for i, chunk in enumerate(result[:1]):
+            print(f"--- Sample Chunk {i} ---")
+            print(f"  Course: {chunk['course_name']} | Code: {chunk['course_code']}")
+            print(f"  Section: {chunk['section_type']} | Page: {chunk['page']}")
+            print(f"  Content: {chunk['text'][:120]}...")
+        
+        return result
+
 
     # ------------------------------------------------------------------
     # Step 0: footer detection
