@@ -27,6 +27,7 @@ class Supabase:
         checksum: str,
         chunks: list[dict],
         embeddings: list[list[float]],
+        program_url: str | None = None,
     ) -> None:
         """
         Performs an atomic-like refresh of a document: 
@@ -42,6 +43,7 @@ class Supabase:
                     "filename": filename,
                     "title": title,
                     "checksum": checksum,
+                    "program_url": program_url,
                 },
                 on_conflict="filename",
             )
@@ -74,11 +76,10 @@ class Supabase:
                     "credits": c.get("credits", ""),
                     "section_type": c.get("section_type", ""),
                 },
-                # Structured columns for SQL-level filtering
-                "course_name": c.get("course_name") or None,
-                "course_code": c.get("course_code") or None,
-                "degree_name": c.get("degree_name") or None,
-                "section_type": c.get("section_type") or None,
+                # Program-level columns (parsed from filename convention)
+                "doc_type": c.get("doc_type") or None,
+                "program_type": c.get("program_type") or None,
+                "program_name": c.get("program_name") or None,
             }
             for c, e in zip(chunks, embeddings)
         ]

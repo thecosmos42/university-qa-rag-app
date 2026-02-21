@@ -1,48 +1,42 @@
-# rag_system/embedder.py
 """
-Embedding Module
+Local GPU Embedding Module
 
-Convert text strings into dense numerical vectors
+Uses sentence-transformers with automatic GPU acceleration.
+BAAI/bge-base-en-v1.5 outputs 768-dim vectors — matches Supabase vector(768).
+No API keys, no quotas, no rate limits.
 """
 
 from typing import List
+import torch
 from sentence_transformers import SentenceTransformer
 from src.config.config import EMBEDDING_MODEL_NAME
 
 
 class Embedder:
-    """Wraps a sentence-transformers model to produce text embeddings."""
+    """Local sentence-transformers embedder with automatic GPU support."""
 
     def __init__(self, model_name: str = EMBEDDING_MODEL_NAME):
+        self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        print(f"[Embedder] Loading '{model_name}' on {self.device.upper()}...")
+        self.model = SentenceTransformer(model_name, device=self.device)
+        print(f"[Embedder] Ready — output dim: {self.model.get_sentence_embedding_dimension()}")
+
+    def encode(self, texts: List[str], task_type: str = "RETRIEVAL_DOCUMENT") -> List[List[float]]:
         """
-        Load the embedding model into memory.
+        Encode texts into vectors.
+        task_type is accepted for interface compatibility with the Gemini embedder
+        but is not used — BGE models are trained for retrieval by default.
 
-        Args:
-            model_name: A sentence-transformers model identifier.
-                        Defaults to the value in config.py.
-        """
-        print(f"[Embedder] Loading model '{model_name}'...")
-        self.model = SentenceTransformer(model_name)
-        print("[Embedder] Model loaded.")
-
-    def encode(self, texts: List[str]) -> List[List[float]]:
-        """
-        Encode a list of text strings into vectors.
-
-        Args:
-            texts: One or more strings to embed.
-
-        Returns:
-            A list of embedding vectors (list of floats), one per input string.
-            Each vector has the same dimensionality as the model's output
-            (384 for all-MiniLM-L6-v2).
+        Returns list of float lists with shape (len(texts), 768).
         """
         if not texts:
             return []
 
-        # sentence-transformers handles batching internally.
-        embeddings = self.model.encode(texts, show_progress_bar=True)
-
-        # .encode() returns a NumPy array; convert to plain Python lists
-        # so the result is JSON-serialisable and ChromaDB-compatible.
+        embeddings = self.model.encode(
+            texts,
+            batch_size=64,          # RTX 5060 can handle large batches
+            show_progress_bar=True,
+            convert_to_numpy=True,
+            normalize_embeddings=True,  # BGE models benefit from L2 normalisation
+        )
         return embeddings.tolist()

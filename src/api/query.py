@@ -3,16 +3,18 @@ from pydantic import BaseModel
 import supabase
 import time
 from src.config.db_config import SUPABASE_URL, SUPABASE_SERVICE_KEY
-from src.ingestion.embedder import Embedder
+from src.ingestion.embedder_factory import get_embedder
 from src.llm.llm_wrapper import LLMWrapper
 from src.llm.query_rewriter import QueryRewriter
+from src.llm.program_extractor import ProgramExtractor
 from src.config.logger import logger
 import re
 
 router = APIRouter()
-emb = Embedder()
+emb = get_embedder()
 rewriter = QueryRewriter()
 generator = LLMWrapper()
+program_extractor = ProgramExtractor()
 sb = supabase.create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
 
 class QueryRequest(BaseModel):
@@ -34,6 +36,14 @@ def query_rag(req: QueryRequest):
     search_query = req.question
     logger.info(f"Query: {search_query}")
 
+    # Extract program-level filters (which programs + doc type this query targets)
+    prog_filter = program_extractor.extract(search_query)
+    logger.info(
+        f"[ProgramFilter] programs={prog_filter.program_names or 'all'}"
+    )
+    # Convert to None when empty so SQL treats it as "no filter"
+    p_program_names = prog_filter.program_names if prog_filter.program_names else None
+
     # Embed the question for semantic matching
     question_embedding = emb.encode(
         texts=[search_query], 
@@ -52,10 +62,9 @@ def query_rag(req: QueryRequest):
             "p_semantic_weight": req.semantic_weight,
             "p_keyword_weight": req.keyword_weight,
             "p_limit": req.limit,
-            # No metadata filters without query rewriter
-            "p_course_name": None,
-            "p_course_code": None,
-            "p_degree_name": None,
+            # Program-level filters derived from the query
+            "p_program_names": p_program_names,
+            "p_doc_type": None,
         }
     ).execute()
     t_search = time.time()
@@ -64,7 +73,7 @@ def query_rag(req: QueryRequest):
         logger.info(
             f"RANK {i+1} | {res.get('search_type')} | "
             f"score={res.get('combined_score'):.4f} | "
-            f"{res.get('chunk_course_name', '')} | "
+            f"program={res.get('chunk_program_name', '')} | "
             f"{res['content'][:80]}..."
         )
 
@@ -82,9 +91,9 @@ def query_rag(req: QueryRequest):
                 "p_semantic_weight": req.semantic_weight,
                 "p_keyword_weight": req.keyword_weight,
                 "p_limit": req.limit,
-                "p_course_name": None,
-                "p_course_code": None,
-                "p_degree_name": None,
+                # Retry without program filters to broaden scope
+                "p_program_names": None,
+                "p_doc_type": None,
             }
         ).execute()
         for i, res in enumerate(db_results.data):
@@ -127,7 +136,10 @@ def query_rag(req: QueryRequest):
                     "index": idx,
                     "label": res["filename"],
                     "page": res.get("page_number"),
-                    "courseName": res.get("chunk_course_name", ""),
+                    "programName": res.get("chunk_program_name", ""),
+                    "programType": res.get("chunk_program_type", ""),
+                    "docType": res.get("chunk_doc_type", ""),
+                    "href": res.get("program_url") or None,
                 })
 
     return {
@@ -136,5 +148,8 @@ def query_rag(req: QueryRequest):
         "debug": {
             "result_count": len(db_results.data),
             "tokens": token_usage,
+            "program_filter": {
+                "programs": prog_filter.program_names or "all",
+            },
         }
     }

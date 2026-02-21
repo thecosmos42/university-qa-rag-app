@@ -39,8 +39,24 @@ CHUNK_SEPARATORS: list[str] = ["\n\n", "\n", " ", ""]
 # ---------------------------------------------------------------------------
 # Embeddings
 # ---------------------------------------------------------------------------
-# Sentence-Transformers model name used to encode text chunks into vectors.
-EMBEDDING_MODEL_NAME: str = "all-MiniLM-L6-v2"
+# Which embedding backend to use for BOTH ingestion and query time.
+# Changing this value REQUIRES clearing data/embeddings_cache/ and re-ingesting
+# with --force, otherwise stored vectors and query vectors will be mismatched.
+#
+#   "local"        — BAAI/bge-base-en-v1.5 via sentence-transformers (no API key, GPU-aware)
+#   "gemini"       — gemini-embedding-001 via Google Generative AI API (requires GOOGLE_API_KEY)
+#   "huggingface"  — BAAI/bge-base-en-v1.5 via HF Serverless Inference API (requires HF_TOKEN)
+EMBEDDING_BACKEND: str = "huggingface"
+
+# Sentence-Transformers model name used when EMBEDDING_BACKEND = "local".
+# BAAI/bge-base-en-v1.5 outputs 768-dim vectors (matches Supabase vector(768))
+# and runs on GPU automatically when available.
+EMBEDDING_MODEL_NAME: str = "BAAI/bge-base-en-v1.5"
+
+# HuggingFace Inference API settings (used when EMBEDDING_BACKEND = "huggingface").
+# BAAI/bge-base-en-v1.5 is used here too — ensures the SAME model and vector
+# space is used regardless of whether you run locally or via the HF API.
+HF_EMBEDDING_MODEL_NAME: str = "BAAI/bge-base-en-v1.5"
 
 
 # ---------------------------------------------------------------------------
@@ -83,3 +99,17 @@ load_dotenv()
 GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
 if not GOOGLE_API_KEY:
     raise ValueError("GOOGLE_API_KEY not set. Add it to your .env file.")
+
+# Support multiple Gemini keys for rate-limit rotation.
+# Add GOOGLE_API_KEY_2, GOOGLE_API_KEY_3, … to .env as needed.
+GOOGLE_API_KEYS: list[str] = [GOOGLE_API_KEY]
+for _i in range(2, 10):
+    _extra = os.environ.get(f"GOOGLE_API_KEY_{_i}")
+    if _extra:
+        GOOGLE_API_KEYS.append(_extra)
+    else:
+        break
+
+# HuggingFace token — only required when EMBEDDING_BACKEND = "huggingface".
+# Get a free read token at: https://huggingface.co/settings/tokens
+HF_TOKEN: str | None = os.environ.get("HF_TOKEN")

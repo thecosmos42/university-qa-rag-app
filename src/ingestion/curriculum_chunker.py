@@ -1,11 +1,7 @@
-# src/ingestion/academic_chunker.py
+# src/ingestion/curriculum_chunker.py
 """
 Document-Aware Academic Chunker with Context-Enriched Chunking
-==============================================================
-VU Amsterdam Study Guide 2025-2026
 
-CHUNKING STRATEGY
------------------
 Implements "Context-Enriched Chunking" as described in the Databricks guide
 (https://community.databricks.com/t5/technical-blog/the-ultimate-guide-to-
 chunking-strategies-for-rag-applications/ba-p/113089, Strategy #5).
@@ -20,11 +16,12 @@ For this specific academic PDF the context enrichment is:
 
   Context block prepended to every chunk:
   ┌─────────────────────────────────────────────────────────────────┐
-  │ [Programme: Master of Science in Artificial Intelligence]       │
-  │ [Specialisation: AI for Health]                                 │
-  │ [Prev: Advanced Logic (X_405048, P4)]                           │
-  │ [Next: AI and Society (XM_0075, P3)]                            │
-  │ [Position: 12 of 52]                                            │
+  │ [Context]                                                        │
+  │ Programme: Master of Science in Artificial Intelligence          │
+  │ Track: AI for Health                                             │
+  │ Previous: Advanced Logic (X_405048, P4)                          │
+  │ Next: AI and Society (XM_0075, P3)                               │
+  │ Position: 12 of 52                                               │
   ├─────────────────────────────────────────────────────────────────┤
   │ [Course: Advanced Machine Learning] [Code: XM_0010] ...         │
   │ <actual chunk body>                                              │
@@ -86,7 +83,7 @@ Explicit patterns can be supplied to override this.
 QUICKSTART
 ----------
     from langchain_community.document_loaders import PyPDFLoader
-    from academic_chunker import CurriculumChunker
+    from curriculum_chunker import CurriculumChunker
 
     # Zero config — auto-detects footers, works for any programme
     docs   = PyPDFLoader("any_catalogue.pdf").load()
@@ -460,7 +457,7 @@ class CurriculumChunker:
     # Public API
     # ------------------------------------------------------------------
 
-    def chunk_documents(self, documents: List[Document]) -> List[Document]:
+    def chunk_documents(self, documents: List[Document]) -> List[dict]:
         """
         Convert page-level Documents into context-enriched course chunks.
 
@@ -468,7 +465,9 @@ class CurriculumChunker:
             documents: One Document per PDF page (e.g. from PyPDFLoader).
 
         Returns:
-            List of enriched LangChain Documents with metadata.
+            List of plain dicts (JSON-serialisable) with keys:
+            text, source, page, chunk_index, course_name, course_code,
+            credits, degree_name, section_type.
         """
         if not documents:
             return []
@@ -480,10 +479,12 @@ class CurriculumChunker:
         sections              = self._split_into_sections(full_text, page_map, source)
         sections              = self._enrich_with_context(sections)
         chunks                = self._sections_to_documents(sections)
-        dicts                 = self._documents_to_dicts(chunks)
 
+        # Assign chunk_index BEFORE converting to dicts so the field is populated
         for i, chunk in enumerate(chunks):
             chunk.metadata["chunk_index"] = i
+
+        dicts = self._documents_to_dicts(chunks)
 
         footer_mode = "explicit" if self._explicit_footer_patterns else "auto-detected"
         print(
@@ -500,15 +501,13 @@ class CurriculumChunker:
         Convert LangChain Document objects into the plain dicts that the
         Embedder and Supabase expect.
 
-        Now includes structured metadata extracted by CurriculumChunker:
-        course_name, course_code, credits, degree_name, section_type.
-
         Args:
-            chunks: List of LangChain Document objects as returned by
-                    CurriculumChunker.chunk_documents().
+            chunks: List of LangChain Document objects produced by
+                    _sections_to_documents().
 
         Returns:
-            A list of dicts with text, source, page, chunk_index, and metadata.
+            A list of dicts with keys: text, source, page, chunk_index,
+            course_name, course_code, credits, degree_name, section_type.
         """
         result: List[dict] = []
         for doc in chunks:

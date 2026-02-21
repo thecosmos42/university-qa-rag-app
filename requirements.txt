@@ -14,5 +14,10 @@ supabase
 google-genai
 requests
 pdfplumber
+playwright 
+httpx 
+beautifulsoup4 
+tqdm
+google-api-core
 # torch
 # pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128

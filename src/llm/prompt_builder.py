@@ -26,8 +26,19 @@ class PromptBuilder:
             # Clean text: Remove extra newlines and trim whitespace
             clean_text = " ".join(chunk['text'].split())
             
-            # Create a clear labeled block
-            header = f"SOURCE {i} (File: {chunk['source']}, Page: {chunk['page']})"
+            # Build a descriptive header so the LLM knows exactly which document
+            # and program the chunk belongs to
+            program_name = chunk.get('program_name', '')
+            program_type = chunk.get('program_type', '')
+            doc_type = chunk.get('doc_type', '')
+            program_label = ""
+            if program_type and program_name:
+                program_label = f", Program: {program_type.capitalize()} {program_name.capitalize()}"
+            elif program_name:
+                program_label = f", Program: {program_name.capitalize()}"
+            doc_label = f", Doc: {doc_type.upper()}" if doc_type else ""
+
+            header = f"SOURCE {i} (File: {chunk['source']}, Page: {chunk['page']}{program_label}{doc_label})"
             context_parts.append(f"[{header}]\n{clean_text}")
         
         context_str = "\n\n".join(context_parts)

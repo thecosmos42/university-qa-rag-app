@@ -1,6 +1,6 @@
 from src.llm.prompt_builder import PromptBuilder
 from src.llm.local_llm import LLM
-from src.llm.gemini_llm import client, ask_gemini
+from src.llm.gemini_llm import ask_gemini
 from src.config.logger import logger
 
 class LLMWrapper:
@@ -13,7 +13,11 @@ class LLMWrapper:
             {
                 "text": res["content"], 
                 "source": res["filename"], 
-                "page": res["page_number"]
+                "page": res["page_number"],
+                # Program-level metadata so PromptBuilder can label sources correctly
+                "doc_type": res.get("chunk_doc_type", ""),
+                "program_type": res.get("chunk_program_type", ""),
+                "program_name": res.get("chunk_program_name", ""),
             } for res in search_results.data
         ]
 
@@ -26,4 +30,4 @@ class LLMWrapper:
         logger.info(f"The final prompt is {full_prompt}")
         
         # Returns {"text": ..., "tokens": {"prompt": N, "response": N, "total": N}}
-        return ask_gemini(client, full_prompt)
+        return ask_gemini(full_prompt)
