@@ -1,4 +1,4 @@
-# rag-app
+# university-qa-rag
 
 A Retrieval-Augmented Generation (RAG) backend for answering questions about VU Amsterdam master's programmes. Built with FastAPI, Supabase (pgvector), and Gemini 2.5 Flash.
 
