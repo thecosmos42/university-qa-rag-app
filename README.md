@@ -239,3 +239,32 @@ The server is designed for zero-downtime cold starts on platforms like Render or
 ## Frontend
 
 The companion Next.js frontend lives in [`rag-app-ui/`](../rag-app-ui). Point it at this backend by setting `NEXT_PUBLIC_API_URL=http://localhost:8000` in its `.env.local`.
+
+---
+
+## Evaluation Benchmark
+
+`eval/` contains a labeled benchmark (`eval/dataset.jsonl`, one JSON item per line) that measures:
+
+| Area | Metrics |
+|---|---|
+| Retrieval | recall@1/3/5/10, MRR (a chunk is relevant if it comes from a gold file and contains a gold snippet) |
+| Answer correctness | required-fact coverage, LLM-judge correctness vs. a reference answer, abstention accuracy on unanswerable questions |
+| Citation faithfulness | citations present, valid `[SOURCE n]` indices, precision vs. gold evidence, LLM-judged claim support |
+| Latency | embed / search / LLM / total: mean, p50, p95 |
+| Token usage | prompt / response / total per question (judge tokens reported separately) |
+
+```bash
+python -m eval.validate_dataset                     # verify every gold snippet exists in its PDF page
+python -m eval.run_benchmark                        # retrieval only (no LLM cost)
+python -m eval.run_benchmark --generate             # + answers, latency, tokens
+python -m eval.run_benchmark --judge --sleep 5      # + LLM-judged correctness/faithfulness
+python -m eval.run_benchmark --limit 5 --category admission
+```
+
+Runs need the same `.env` and ingested database as the API, and write full per-item results to `eval/results/`.
+Each dataset item has `question`, `gold_files`, `gold_pages`, `gold_snippets` (verbatim evidence), `reference_answer`,
+`must_contain` (strings, or lists of acceptable alternatives), `category` and `answerable` (`false` items test abstention).
+Unit tests: `pytest test/test_eval_metrics.py test/test_eval_runner.py`.
+
+Full methodology (labels, flow, metric definitions, limitations): [eval/EVALUATION.md](eval/EVALUATION.md).

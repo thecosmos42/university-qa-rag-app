@@ -54,7 +54,7 @@ CHUNK_SEPARATORS: list[str] = ["\n\n", "\n", " ", ""]
 #   "local"        — BAAI/bge-base-en-v1.5 via sentence-transformers (no API key, GPU-aware)
 #   "gemini"       — gemini-embedding-001 via Google Generative AI API (requires GOOGLE_API_KEY)
 #   "huggingface"  — BAAI/bge-base-en-v1.5 via HF Serverless Inference API (requires HF_TOKEN)
-EMBEDDING_BACKEND: str = "huggingface"
+EMBEDDING_BACKEND: str = "gemini"
 
 # Sentence-Transformers model name used when EMBEDDING_BACKEND = "local".
 # BAAI/bge-base-en-v1.5 outputs 768-dim vectors (matches Supabase vector(768))

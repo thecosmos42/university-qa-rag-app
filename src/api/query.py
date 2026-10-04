@@ -9,6 +9,7 @@ from src.llm.llm_wrapper import LLMWrapper
 from src.llm.query_rewriter import QueryRewriter
 from src.llm.program_extractor import ProgramExtractor
 from src.config.logger import logger
+from src.api.citations import parse_cited_indices
 import re
 
 router = APIRouter()
@@ -46,16 +47,19 @@ class QueryRequest(BaseModel):
     keyword_weight: float = 0.4
     limit: int = 10
 
-@router.post("/query")
-async def query_rag(req: QueryRequest):
+def retrieve_chunks(
+    question: str,
+    document_ids: list[str] | None = None,
+    semantic_weight: float = 0.6,
+    keyword_weight: float = 0.4,
+    limit: int = 10,
+):
+    """Run program extraction + hybrid search. Shared by /query and the eval benchmark.
+
+    Returns (db_results, prog_filter, timings) where timings holds embed_s and search_s.
+    """
     t_start = time.time()
-
-    # # Query rewriting disabled for now
-    # rewritten = rewriter.rewrite(req.question)
-    # t_rewrite = time.time()
-    # logger.info(f"Rewritten query: {rewritten.rewritten_query}")
-
-    search_query = req.question
+    search_query = question
     logger.info(f"Query: {search_query}")
 
     # Extract program-level filters (which programs + doc type this query targets)
@@ -74,16 +78,16 @@ async def query_rag(req: QueryRequest):
     t_embed = time.time()
 
     # Call hybrid_search with RRF + metadata filters
-    doc_ids = req.document_ids or []
+    doc_ids = document_ids or []
     db_results = sb.rpc(
         "hybrid_search",
         {
             "p_question": search_query,
             "p_question_embedding": question_embedding,
             "p_document_ids": doc_ids,
-            "p_semantic_weight": req.semantic_weight,
-            "p_keyword_weight": req.keyword_weight,
-            "p_limit": req.limit,
+            "p_semantic_weight": semantic_weight,
+            "p_keyword_weight": keyword_weight,
+            "p_limit": limit,
             # Program-level filters derived from the query
             "p_program_names": p_program_names,
             "p_doc_type": None,
@@ -110,9 +114,9 @@ async def query_rag(req: QueryRequest):
                 "p_question": search_query,
                 "p_question_embedding": question_embedding,
                 "p_document_ids": doc_ids,
-                "p_semantic_weight": req.semantic_weight,
-                "p_keyword_weight": req.keyword_weight,
-                "p_limit": req.limit,
+                "p_semantic_weight": semantic_weight,
+                "p_keyword_weight": keyword_weight,
+                "p_limit": limit,
                 # Retry without program filters to broaden scope
                 "p_program_names": None,
                 "p_doc_type": None,
@@ -122,6 +126,22 @@ async def query_rag(req: QueryRequest):
             logger.info(f"FALLBACK RANK {i+1} | Source: {res['filename']} Page: {res['page_number']}")
             logger.info(f"  - Combined (RRF) Score: {res.get('combined_score')}")
             logger.info(f"  - Search Type: {res.get('search_type')}")
+    timings = {"embed_s": t_embed - t_start, "search_s": t_search - t_embed}
+    return db_results, prog_filter, timings
+
+
+@router.post("/query")
+async def query_rag(req: QueryRequest):
+    t_start = time.time()
+    db_results, prog_filter, timings = retrieve_chunks(
+        req.question,
+        req.document_ids,
+        req.semantic_weight,
+        req.keyword_weight,
+        req.limit,
+    )
+    t_embed = t_start + timings["embed_s"]
+    t_search = t_embed + timings["search_s"]
 
     # Generate answer
     llm_result = await generator.generate_answer(req.question, db_results)
@@ -146,7 +166,7 @@ async def query_rag(req: QueryRequest):
     )
     
     # Extract which SOURCE numbers the LLM actually cited in its answer
-    cited_indices = set(int(n) for n in re.findall(r'\[SOURCE\s+(\d+)', final_output))
+    cited_indices = parse_cited_indices(final_output)
 
     # Only return sources that were actually cited
     sources = []

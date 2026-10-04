@@ -20,3 +20,7 @@ logs/*.log
 # IDE
 .vscode/
 .idea/
+
+eval/results/
+
+rag-app/
